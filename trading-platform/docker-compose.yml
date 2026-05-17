@@ -1,0 +1,292 @@
+name: trading-platform
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  influxdb:
+    image: influxdb:2.7
+    ports:
+      - "${INFLUXDB_PORT}:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: ${DOCKER_INFLUXDB_INIT_MODE}
+      DOCKER_INFLUXDB_INIT_USERNAME: ${DOCKER_INFLUXDB_INIT_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${DOCKER_INFLUXDB_INIT_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${DOCKER_INFLUXDB_INIT_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${DOCKER_INFLUXDB_INIT_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${DOCKER_INFLUXDB_INIT_ADMIN_TOKEN}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.8
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr=internal://redpanda:8082,external://localhost:18082
+    ports:
+      - "${REDPANDA_BROKER_PORT}:9092"
+      - "19092:19092"
+      - "9644:9644"
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.14.1
+    command: mlflow server --host 0.0.0.0 --port 5000
+    ports:
+      - "${MLFLOW_PORT}:5000"
+    volumes:
+      - mlflow_data:/mlruns
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/ >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  grafana:
+    image: grafana/grafana:11.1.4
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./grafana/provisioning/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  openalgo:
+    image: marketcalls/openalgo:latest
+    ports:
+      - "${OPENALGO_PORT}:5000"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+    ports:
+      - "${BACKEND_PORT}:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://backend:8000
+      NODE_ENV: development
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT}:3000"
+
+  scrapling_intelligence:
+    build:
+      context: ./services/scrapling_intelligence_service
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/1
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  # ── Hybrid Engine Microservices ──────────────────────────────────────────────
+
+  market_data_service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.ingestion.market_data_service
+    env_file:
+      - .env
+    depends_on:
+      redpanda:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  macro_data_service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.ingestion.macro_data_service
+    env_file:
+      - .env
+    depends_on:
+      redpanda:
+        condition: service_started
+    restart: unless-stopped
+
+  normalization_service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.hybrid_engine.normalization.normalization_service
+    env_file:
+      - .env
+    depends_on:
+      redpanda:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  feature_engineering_service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.hybrid_engine.normalization.feature_engineering_service
+    env_file:
+      - .env
+    depends_on:
+      redpanda:
+        condition: service_started
+    restart: unless-stopped
+
+  llm_agent_service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.hybrid_engine.agents.news_analyst
+    env_file:
+      - .env
+    environment:
+      LLM_ENDPOINT: ${LLM_ENDPOINT:-http://localhost:8080/v1/chat/completions}
+      LLM_MODEL: ${LLM_MODEL:-nvidia/llama-3.1-nemotron-ultra-253b-v1}
+    depends_on:
+      redpanda:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  signal_fusion_engine:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.hybrid_engine.fusion.signal_fusion_engine
+    env_file:
+      - .env
+    depends_on:
+      redpanda:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  commodity_intelligence_engine:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.commodities.commodity_intelligence_engine
+    env_file:
+      - .env
+    depends_on:
+      redpanda:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  macro_analyst_agent:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.hybrid_engine.agents.macro_analyst
+    env_file:
+      - .env
+    depends_on:
+      redpanda:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  commodity_analyst_agent:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.hybrid_engine.agents.commodity_analyst
+    env_file:
+      - .env
+    depends_on:
+      redpanda:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  influxdb_data:
+  mlflow_data:
+  grafana_data:

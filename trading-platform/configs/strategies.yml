@@ -1,0 +1,114 @@
+# Strategy plugin registry — Law 3 + Law 5
+# Add a new strategy: create one file in app/strategies/, add one entry here.
+# Zero changes to any other file required.
+
+strategies:
+  - id: opening_range_breakout
+    class_name: OpeningRangeBreakoutStrategy
+    module: app.strategies.rule_based.opening_range_breakout
+    type: rule_based
+    asset_class: india
+    enabled: true
+    initial_weight: 0.10
+    initial_capital: 100000.0
+    status: paper
+
+  - id: supertrend_rsi
+    class_name: SupertrendRSIStrategy
+    module: app.strategies.rule_based.supertrend_rsi
+    type: rule_based
+    asset_class: india
+    enabled: true
+    initial_weight: 0.10
+    initial_capital: 100000.0
+    status: paper
+
+  - id: bank_nifty_straddle
+    class_name: BankNiftyShortStraddleStrategy
+    module: app.strategies.rule_based.bank_nifty_straddle
+    type: rule_based
+    asset_class: india
+    enabled: true
+    initial_weight: 0.10
+    initial_capital: 100000.0
+    status: paper
+
+  - id: crypto_momentum
+    class_name: CryptoMomentumStrategy
+    module: app.strategies.rule_based.crypto_momentum
+    type: rule_based
+    asset_class: crypto
+    enabled: true
+    initial_weight: 0.10
+    initial_capital: 100000.0
+    status: paper
+
+  - id: mean_reversion
+    class_name: MeanReversionStrategy
+    module: app.strategies.rule_based.mean_reversion
+    type: rule_based
+    asset_class: multi
+    enabled: true
+    initial_weight: 0.10
+    initial_capital: 100000.0
+    status: paper
+
+  - id: buy_and_hold
+    class_name: BuyAndHoldStrategy
+    module: app.strategies.rule_based.buy_and_hold
+    type: rule_based
+    asset_class: multi
+    enabled: false
+    initial_weight: 0.05
+    initial_capital: 100000.0
+    status: paper
+
+  - id: lightgbm_alpha
+    class_name: LightGBMAlphaStrategy
+    module: app.strategies.ml_alpha.lightgbm_alpha
+    type: ml_alpha
+    asset_class: multi
+    enabled: true
+    initial_weight: 0.10
+    initial_capital: 100000.0
+    status: paper
+
+  - id: lstm_alpha
+    class_name: LSTMAlphaStrategy
+    module: app.strategies.ml_alpha.lstm_alpha
+    type: ml_alpha
+    asset_class: multi
+    enabled: true
+    initial_weight: 0.10
+    initial_capital: 100000.0
+    status: paper
+
+  - id: transformer_alpha
+    class_name: TransformerAlphaStrategy
+    module: app.strategies.ml_alpha.transformer_alpha
+    type: ml_alpha
+    asset_class: multi
+    enabled: true
+    initial_weight: 0.10
+    initial_capital: 100000.0
+    status: paper
+
+  - id: ppo_agent
+    class_name: PPOAgentStrategy
+    module: app.strategies.rl_agents.ppo_agent
+    type: rl_agent
+    asset_class: multi
+    enabled: true
+    initial_weight: 0.10
+    initial_capital: 100000.0
+    status: paper
+
+  - id: td3_agent
+    class_name: TD3AgentStrategy
+    module: app.strategies.rl_agents.td3_agent
+    type: rl_agent
+    asset_class: multi
+    enabled: true
+    initial_weight: 0.10
+    initial_capital: 100000.0
+    status: paper

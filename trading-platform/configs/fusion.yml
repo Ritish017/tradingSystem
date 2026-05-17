@@ -1,0 +1,21 @@
+# Signal fusion configuration — Law 5
+# All behavioral decisions for the signal fusion engine live here.
+
+fusion:
+  weights:
+    market: 0.40
+    news: 0.30
+    macro: 0.20
+    social: 0.10
+
+  # Signal quality gates
+  min_confidence: 0.60
+  max_signal_age_seconds: 300
+  conflict_threshold: 0.50   # |market - news| > this → HOLD
+
+  # Action thresholds on final_score
+  buy_threshold: 0.30
+  sell_threshold: -0.30
+
+  # Redis cache TTL for unified signals (seconds)
+  signal_cache_ttl: 300

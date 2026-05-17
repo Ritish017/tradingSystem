@@ -1,0 +1,68 @@
+# ───────────────────────── Secrets / credentials (NEVER COMMIT) ─────────────
+.env
+.env.*
+*.env
+!.env.example
+!*.env.example
+**/.env
+**/.env.local
+**/.env.*.local
+*.pem
+*.key
+*.p12
+credentials*.json
+token*.json
+secrets*.json
+
+# ───────────────────────── Python ───────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+.venv312/
+venv/
+env/
+ENV/
+*.egg-info/
+.eggs/
+build/
+dist/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# ───────────────────────── Node / frontend ──────────────────────────────────
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ───────────────────────── Logs / runtime ───────────────────────────────────
+*.log
+*.pid
+*.seed
+*.out
+
+# ───────────────────────── Data / models / DB ───────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+mlruns/
+mlflow.db
+
+# ───────────────────────── OS / editor ──────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~

@@ -1,0 +1,65 @@
+# Intelligence agent registry — Law 3 + Law 5
+# Add a new agent: create one file in app/intelligence/, add one entry here.
+# Zero changes to any other file required.
+
+agents:
+  - id: news_analyst
+    class_name: NewsAnalystAgent
+    module: app.intelligence.news_analyst
+    weight: 0.15
+    enabled: true
+
+  - id: macro_analyst
+    class_name: MacroAnalystAgent
+    module: app.intelligence.macro_analyst
+    weight: 0.20
+    enabled: true
+
+  - id: technical_analyst
+    class_name: TechnicalAnalystAgent
+    module: app.intelligence.technical_analyst
+    weight: 0.15
+    enabled: true
+
+  - id: quant_research
+    class_name: QuantResearchAgent
+    module: app.intelligence.quant_research_agent
+    weight: 0.10
+    enabled: true
+
+  - id: commodity_analyst
+    class_name: CommodityAnalystAgent
+    module: app.intelligence.commodity_analyst
+    weight: 0.10
+    enabled: true
+
+  - id: crypto_analyst
+    class_name: CryptoAnalystAgent
+    module: app.intelligence.crypto_analyst
+    weight: 0.08
+    enabled: true
+
+  - id: risk_manager
+    class_name: RiskManagerAgent
+    module: app.intelligence.risk_manager_agent
+    weight: 0.12
+    enabled: true
+    is_veto_agent: true     # Risk manager can veto the ensemble
+    veto_risk_threshold: 0.75
+
+  - id: portfolio_manager
+    class_name: PortfolioManagerAgent
+    module: app.intelligence.portfolio_manager_agent
+    weight: 0.07
+    enabled: true
+
+  - id: execution_agent
+    class_name: ExecutionAgent
+    module: app.intelligence.execution_agent
+    weight: 0.03
+    enabled: true
+
+# Ensemble thresholds
+ensemble:
+  buy_min_score: 0.15
+  sell_min_score: 0.12
